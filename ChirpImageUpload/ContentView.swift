@@ -11,7 +11,7 @@ struct ContentView: View {
     // GitHub repository details
     private let githubUsername = "chirpimageupload"
     private let repositoryName = "chirp-post-images"
-    private let githubToken = "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"
+    private let githubToken = "Z2hwXjlBQ3Z6U3dNRGxqU3JYRFd0Tk1hYldSRG5IM3Z3eUpXcHdkbGx2ZzN2c29yZW1nbGV1bVh3PQ==" 
     
     var body: some View {
         VStack {
@@ -89,7 +89,7 @@ struct ContentView: View {
         
         // Request headers
         let headers: HTTPHeaders = [
-            "Authorization": "Bearer \(githubToken)",
+            "Authorization": "Basic \(githubToken)",
             "Accept": "application/vnd.github.v3+json"
         ]
         

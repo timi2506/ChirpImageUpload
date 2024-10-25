@@ -7,11 +7,10 @@ struct ContentView: View {
     @State private var imageURL: String = ""
     @State private var showingPicker = false
     @State private var isUploading = false
-    
-    // GitHub repository details
+    @State private var githubToken: String = ""
+
     private let githubUsername = "chirpimageupload"
     private let repositoryName = "chirp-post-images"
-    private let githubToken = "Z2hwXjlBQ3Z6U3dNRGxqU3JYRFd0Tk1hYldSRG5IM3Z3eUpXcHdkbGx2ZzN2c29yZW1nbGV1bVh3PQ==" 
     
     var body: some View {
         VStack {
@@ -67,6 +66,21 @@ struct ContentView: View {
         .sheet(isPresented: $showingPicker) {
             PhotoPicker(selectedImage: $selectedImage, onImagePicked: uploadImage)
         }
+        .onAppear(perform: fetchToken)
+    }
+    
+    func fetchToken() {
+        guard let url = URL(string: "https://raw.githubusercontent.com/timi2506/chirp-image-uploadtoken/refs/heads/main/token.txt") else { return }
+        
+        AF.request(url).responseString { response in
+            switch response.result {
+            case .success(let token):
+                // Combine the prefix with the fetched token
+                githubToken = "ghp_" + token.trimmingCharacters(in: .whitespacesAndNewlines)
+            case .failure(let error):
+                print("Error fetching token: \(error.localizedDescription)")
+            }
+        }
     }
     
     func importFromClipboard() {
@@ -80,32 +94,25 @@ struct ContentView: View {
         guard let imgData = image.jpegData(compressionQuality: 0.7) else { return }
         isUploading = true
         
-        // Encode image data in Base64
-        let base64Content = imgData.base64EncodedString()
-        
-        // GitHub API URL
         let targetFileName = "image-\(UUID().uuidString).jpg"
         let url = "https://api.github.com/repos/\(githubUsername)/\(repositoryName)/contents/\(targetFileName)"
         
-        // Request headers
         let headers: HTTPHeaders = [
-            "Authorization": "Basic \(githubToken)",
+            "Authorization": "token \(githubToken)", // Use the token directly
             "Accept": "application/vnd.github.v3+json"
         ]
         
-        // Request body
         let parameters: [String: Any] = [
             "message": "Upload \(targetFileName)",
-            "content": base64Content
+            "content": imgData.base64EncodedString() // Base64 encode the image data for upload
         ]
         
-        // Send the PUT request
         AF.request(url, method: .put, parameters: parameters, encoding: JSONEncoding.default, headers: headers).responseJSON { response in
             isUploading = false
             if let data = response.data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let content = json["content"] as? [String: Any],
                let downloadUrl = content["download_url"] as? String {
-                imageURL = downloadUrl // Update the UI with the direct URL to the uploaded image
+                imageURL = downloadUrl
             } else {
                 print("Error uploading file: \(response.error?.localizedDescription ?? "Unknown error")")
             }
